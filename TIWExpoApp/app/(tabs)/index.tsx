@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Pressable, Alert, TextInput, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Pressable, Alert, TextInput, Modal, GestureResponderEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 // Task type definition
@@ -107,12 +107,31 @@ export default function TaskScreen() {
     setEditedTitle('');
   };
   
+  // A ref to track if a task item was tapped
+  const taskItemTapped = useRef(false);
+  
+  // Handle tap on the task list area
+  const handleTaskListTap = (event: GestureResponderEvent) => {
+    // Only create a task if no task item was tapped
+    if (!taskItemTapped.current) {
+      createNewTask();
+    }
+    // Reset the flag
+    taskItemTapped.current = false;
+  };
+  
+  // Handle tap on a task item
+  const handleTaskItemTap = () => {
+    // Set the flag to indicate a task item was tapped
+    taskItemTapped.current = true;
+  };
+  
   // Render each task
   const renderTask = ({ item }: { item: Task }) => {
     // If task is being edited, show edit form
     if (editingTask && editingTask.id === item.id) {
       return (
-        <View style={styles.editTaskContainer}>
+        <View style={styles.editTaskContainer} onTouchStart={handleTaskItemTap}>
           <TextInput 
             style={styles.editTaskInput}
             value={editedTitle}
@@ -129,7 +148,7 @@ export default function TaskScreen() {
     }
     
     return (
-      <View style={styles.taskItemContainer}>
+      <View style={styles.taskItemContainer} onTouchStart={handleTaskItemTap}>
         <TouchableOpacity 
           style={styles.taskItem}
           onPress={() => toggleTaskCompletion(item.id)}
@@ -201,7 +220,10 @@ export default function TaskScreen() {
       </View>
 
       {/* Task List */}
-      <View style={styles.taskList}>
+      <Pressable 
+        style={styles.taskList}
+        onPress={handleTaskListTap}
+      >
         {filteredTasks.length === 0 ? (
           <Pressable 
             style={styles.emptyTaskArea}
@@ -219,13 +241,14 @@ export default function TaskScreen() {
               <Pressable 
                 style={styles.addTaskFooter}
                 onPress={createNewTask}
+                onTouchStart={handleTaskItemTap}
               >
                 <Text style={styles.addTaskFooterText}>Tap here to add a task</Text>
               </Pressable>
             }
           />
         )}
-      </View>
+      </Pressable>
 
       {/* Add Task Button */}
       <TouchableOpacity style={styles.addButton} onPress={createNewTask}>
@@ -310,7 +333,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   taskListContent: {
-    paddingBottom: 80,
+    paddingBottom: 20,
   },
   taskItemContainer: {
     flexDirection: 'row',
