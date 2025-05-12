@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Pressable, Alert, TextInput, Modal, GestureResponderEvent } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Pressable, Alert, TextInput, Modal, GestureResponderEvent, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 
 // Task type definition
 interface Task {
@@ -147,37 +148,56 @@ export default function TaskScreen() {
       );
     }
     
+    const renderRightActions = (progress: Animated.AnimatedInterpolation<number>) => {
+      const trans = progress.interpolate({
+        inputRange: [0, 1],
+        outputRange: [128, 0],
+      });
+      
+      return (
+        <View style={styles.swipeableActionsContainer}>
+          <Animated.View style={[styles.swipeableButtons, { transform: [{ translateX: trans }] }]}>
+            <TouchableOpacity
+              onPress={() => startEditing(item)}
+              style={styles.editButton}
+            >
+              <Ionicons name="pencil" size={24} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => deleteTask(item.id)}
+              style={styles.deleteButtonContent}
+            >
+              <Ionicons name="trash" size={24} color="#fff" />
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      );
+    };
+    
     return (
-      <View style={styles.taskItemContainer} onTouchStart={handleTaskItemTap}>
-        <TouchableOpacity 
-          style={styles.taskItem}
-          onPress={() => toggleTaskCompletion(item.id)}
-        >
+      <Swipeable
+        renderRightActions={renderRightActions}
+        friction={2}
+        rightThreshold={40}
+        onSwipeableOpen={() => handleTaskItemTap()}
+      >
+        <View style={styles.taskItemContainer} onTouchStart={handleTaskItemTap}>
           <TouchableOpacity 
-            style={[styles.checkbox, item.completed && styles.checkboxChecked]}
+            style={styles.taskItem}
             onPress={() => toggleTaskCompletion(item.id)}
           >
-            {item.completed && <Ionicons name="checkmark" size={16} color="#fff" />}
-          </TouchableOpacity>
-          <Text style={[styles.taskText, item.completed && styles.taskTextCompleted]}>
-            {item.title}
-          </Text>
-        </TouchableOpacity>
-        <View style={styles.actionButtons}>
-          <TouchableOpacity 
-            onPress={() => startEditing(item)}
-            style={styles.actionButton}
-          >
-            <Ionicons name="pencil-outline" size={20} color="#2196F3" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => deleteTask(item.id)}
-            style={styles.actionButton}
-          >
-            <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+            <TouchableOpacity 
+              style={[styles.checkbox, item.completed && styles.checkboxChecked]}
+              onPress={() => toggleTaskCompletion(item.id)}
+            >
+              {item.completed && <Ionicons name="checkmark" size={16} color="#fff" />}
+            </TouchableOpacity>
+            <Text style={[styles.taskText, item.completed && styles.taskTextCompleted]}>
+              {item.title}
+            </Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </Swipeable>
     );
   };
 
@@ -193,98 +213,100 @@ export default function TaskScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Tasks</Text>
-        <View style={styles.dateToggle}>
-          <Pressable 
-            style={[styles.toggleButton, filter === 'today' && styles.toggleButtonActive]} 
-            onPress={() => setFilter('today')}
-          >
-            <Text style={[styles.toggleText, filter === 'today' && styles.toggleTextActive]}>Today</Text>
-          </Pressable>
-          <Pressable 
-            style={[styles.toggleButton, filter === 'tomorrow' && styles.toggleButtonActive]} 
-            onPress={() => setFilter('tomorrow')}
-          >
-            <Text style={[styles.toggleText, filter === 'tomorrow' && styles.toggleTextActive]}>Tomorrow</Text>
-          </Pressable>
-          <TouchableOpacity 
-            style={styles.menuButton}
-            onPress={() => setMenuVisible(true)}
-          >
-            <Ionicons name="ellipsis-horizontal" size={20} color="#007AFF" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Task List */}
-      <Pressable 
-        style={styles.taskList}
-        onPress={handleTaskListTap}
-      >
-        {filteredTasks.length === 0 ? (
-          <Pressable 
-            style={styles.emptyTaskArea}
-            onPress={createNewTask}
-          >
-            <EmptyTaskList />
-          </Pressable>
-        ) : (
-          <FlatList
-            data={filteredTasks}
-            renderItem={renderTask}
-            keyExtractor={item => item.id}
-            contentContainerStyle={styles.taskListContent}
-            ListFooterComponent={
-              <Pressable 
-                style={styles.addTaskFooter}
-                onPress={createNewTask}
-                onTouchStart={handleTaskItemTap}
-              >
-                <Text style={styles.addTaskFooterText}>Tap here to add a task</Text>
-              </Pressable>
-            }
-          />
-        )}
-      </Pressable>
-
-      {/* Add Task Button */}
-      <TouchableOpacity style={styles.addButton} onPress={createNewTask}>
-        <Ionicons name="add" size={30} color="#fff" />
-      </TouchableOpacity>
-
-      {/* Menu Modal */}
-      <Modal
-        visible={menuVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setMenuVisible(false)}
-      >
-        <Pressable 
-          style={styles.modalOverlay}
-          onPress={() => setMenuVisible(false)}
-        >
-          <View style={styles.menuModal}>
-            <TouchableOpacity 
-              style={styles.menuItem}
-              onPress={clearTasks}
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Tasks</Text>
+          <View style={styles.dateToggle}>
+            <Pressable 
+              style={[styles.toggleButton, filter === 'today' && styles.toggleButtonActive]} 
+              onPress={() => setFilter('today')}
             >
-              <Ionicons name="trash-outline" size={20} color="#FF3B30" />
-              <Text style={styles.menuItemText}>Clear {filter} tasks</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.menuItem}
-              onPress={() => setMenuVisible(false)}
+              <Text style={[styles.toggleText, filter === 'today' && styles.toggleTextActive]}>Today</Text>
+            </Pressable>
+            <Pressable 
+              style={[styles.toggleButton, filter === 'tomorrow' && styles.toggleButtonActive]} 
+              onPress={() => setFilter('tomorrow')}
             >
-              <Ionicons name="close-outline" size={20} color="#8E8E93" />
-              <Text style={styles.menuItemText}>Close</Text>
+              <Text style={[styles.toggleText, filter === 'tomorrow' && styles.toggleTextActive]}>Tomorrow</Text>
+            </Pressable>
+            <TouchableOpacity 
+              style={styles.menuButton}
+              onPress={() => setMenuVisible(true)}
+            >
+              <Ionicons name="ellipsis-horizontal" size={20} color="#007AFF" />
             </TouchableOpacity>
           </View>
+        </View>
+
+        {/* Task List */}
+        <Pressable 
+          style={styles.taskList}
+          onPress={handleTaskListTap}
+        >
+          {filteredTasks.length === 0 ? (
+            <Pressable 
+              style={styles.emptyTaskArea}
+              onPress={createNewTask}
+            >
+              <EmptyTaskList />
+            </Pressable>
+          ) : (
+            <FlatList
+              data={filteredTasks}
+              renderItem={renderTask}
+              keyExtractor={item => item.id}
+              contentContainerStyle={styles.taskListContent}
+              ListFooterComponent={
+                <Pressable 
+                  style={styles.addTaskFooter}
+                  onPress={createNewTask}
+                  onTouchStart={handleTaskItemTap}
+                >
+                  <Text style={styles.addTaskFooterText}>Tap here to add a task</Text>
+                </Pressable>
+              }
+            />
+          )}
         </Pressable>
-      </Modal>
-    </View>
+
+        {/* Add Task Button */}
+        <TouchableOpacity style={styles.addButton} onPress={createNewTask}>
+          <Ionicons name="add" size={30} color="#fff" />
+        </TouchableOpacity>
+
+        {/* Menu Modal */}
+        <Modal
+          visible={menuVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setMenuVisible(false)}
+        >
+          <Pressable 
+            style={styles.modalOverlay}
+            onPress={() => setMenuVisible(false)}
+          >
+            <View style={styles.menuModal}>
+              <TouchableOpacity 
+                style={styles.menuItem}
+                onPress={clearTasks}
+              >
+                <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+                <Text style={styles.menuItemText}>Clear {filter} tasks</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.menuItem}
+                onPress={() => setMenuVisible(false)}
+              >
+                <Ionicons name="close-outline" size={20} color="#8E8E93" />
+                <Text style={styles.menuItemText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Modal>
+      </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -386,13 +408,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
   },
-  actionButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  actionButton: {
-    padding: 8,
-  },
   editTaskContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -462,5 +477,33 @@ const styles = StyleSheet.create({
   menuItemText: {
     fontSize: 16,
     marginLeft: 12,
+  },
+  swipeableActionsContainer: {
+    width: 140,
+    height: '100%',
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  swipeableButtons: {
+    flexDirection: 'row',
+    height: '100%',
+    alignItems: 'center',
+  },
+  editButton: {
+    backgroundColor: '#2196F3',
+    width: 64,
+    height: '80%',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 4,
+  },
+  deleteButtonContent: {
+    backgroundColor: '#FF3B30',
+    width: 64,
+    height: '80%',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
